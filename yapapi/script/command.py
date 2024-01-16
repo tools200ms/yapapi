@@ -5,6 +5,7 @@ from functools import partial
 from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Optional, Type, Union
+
 import attr
 
 from yapapi.events import CommandEventType, DownloadFinished, DownloadStarted
@@ -37,7 +38,7 @@ class Command(abc.ABC):
     def __init__(self):
         self._result: asyncio.Future = asyncio.get_event_loop().create_future()
         self._script: Optional["Script"] = None
-        self._index: int = None
+        self._index: int = 0
 
     def _set_script(self, script: "Script", index: int) -> None:
         assert self._script is None, f"Command {self} already belongs to a script {self._script}"
@@ -60,7 +61,8 @@ class Command(abc.ABC):
 
 @attr.s(auto_attribs=True, repr=False)
 class ProgressArgs:
-    """Interval represented as human-readable duration string (examples: '5s' '10min')"""
+    """Interval represented as human-readable duration string (examples: '5s' '10min')."""
+
     updateInterval: Optional[str] = attr.field(default=None)
     updateStep: Optional[int] = attr.field(default=None)
 
@@ -77,7 +79,11 @@ class Deploy(Command):
         return f"{super().__repr__()} {self.kwargs}"
 
     def evaluate(self):
-        kwargs = dict(self.kwargs, progress=attr.asdict(self._progress)) if self._progress else self.kwargs
+        kwargs = (
+            dict(self.kwargs, progress=attr.asdict(self._progress))
+            if self._progress
+            else self.kwargs
+        )
         return self._make_batch_command("deploy", **kwargs)
 
 
@@ -160,7 +166,9 @@ class SendJson(SendBytes):
         :param data: dictionary representing JSON data to send
         :param dst_path: remote (provider) destination path
         """
-        super().__init__(json.dumps(data).encode(encoding="utf-8"), dst_path, progress_args=progress_args)
+        super().__init__(
+            json.dumps(data).encode(encoding="utf-8"), dst_path, progress_args=progress_args
+        )
 
 
 class SendFile(_SendContent):
@@ -186,12 +194,12 @@ class Run(Command):
     """Command which schedules running a shell command on a provider."""
 
     def __init__(
-            self,
-            cmd: str,
-            *args: str,
-            env: Optional[Dict[str, str]] = None,
-            stderr: CaptureContext = CaptureContext.build(mode="stream"),
-            stdout: CaptureContext = CaptureContext.build(mode="stream"),
+        self,
+        cmd: str,
+        *args: str,
+        env: Optional[Dict[str, str]] = None,
+        stderr: CaptureContext = CaptureContext.build(mode="stream"),
+        stdout: CaptureContext = CaptureContext.build(mode="stream"),
     ):
         """Create a new Run command.
 
@@ -222,11 +230,7 @@ StorageEvent = Union[DownloadStarted, DownloadFinished]
 
 
 class _ReceiveContent(Command, abc.ABC):
-    def __init__(
-            self,
-            src_path: str,
-            progress_args: Optional[ProgressArgs] = None
-    ):
+    def __init__(self, src_path: str, progress_args: Optional[ProgressArgs] = None):
         super().__init__()
         self._src_path: str = src_path
         self._dst_slot: Optional[Destination] = None
@@ -259,10 +263,10 @@ class DownloadFile(_ReceiveContent):
     """Command which schedules downloading a file from a provider."""
 
     def __init__(
-            self,
-            src_path: str,
-            dst_path: str,
-            progress_args: Optional[ProgressArgs] = None,
+        self,
+        src_path: str,
+        dst_path: str,
+        progress_args: Optional[ProgressArgs] = None,
     ):
         """Create a new DownloadFile command.
 
@@ -288,11 +292,11 @@ class DownloadBytes(_ReceiveContent):
     """Command which schedules downloading a file from a provider as bytes."""
 
     def __init__(
-            self,
-            src_path: str,
-            on_download: Callable[[bytes], Awaitable],
-            limit: int = DOWNLOAD_BYTES_LIMIT_DEFAULT,
-            progress_args: Optional[ProgressArgs] = None,
+        self,
+        src_path: str,
+        on_download: Callable[[bytes], Awaitable],
+        limit: int = DOWNLOAD_BYTES_LIMIT_DEFAULT,
+        progress_args: Optional[ProgressArgs] = None,
     ):
         """Create a new DownloadBytes command.
 
@@ -317,11 +321,11 @@ class DownloadJson(DownloadBytes):
     """Command which schedules downloading a file from a provider as JSON data."""
 
     def __init__(
-            self,
-            src_path: str,
-            on_download: Callable[[Any], Awaitable],
-            limit: int = DOWNLOAD_BYTES_LIMIT_DEFAULT,
-            progress_args: Optional[ProgressArgs] = None,
+        self,
+        src_path: str,
+        on_download: Callable[[Any], Awaitable],
+        limit: int = DOWNLOAD_BYTES_LIMIT_DEFAULT,
+        progress_args: Optional[ProgressArgs] = None,
     ):
         """Create a new DownloadJson command.
 
@@ -329,7 +333,12 @@ class DownloadJson(DownloadBytes):
         :param on_download: the callable to run on the received data
         :param limit: limit of bytes to be downloaded (expected size)
         """
-        super().__init__(src_path, partial(self.__on_json_download, on_download), limit, progress_args=progress_args)
+        super().__init__(
+            src_path,
+            partial(self.__on_json_download, on_download),
+            limit,
+            progress_args=progress_args,
+        )
 
     @staticmethod
     async def __on_json_download(on_download: Callable[[bytes], Awaitable], content: bytes):
