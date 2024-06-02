@@ -48,7 +48,7 @@ class DateService(Service):
 
 
 async def main():
-    async with Golem(budget=1.0, subnet_tag="public") as golem:
+    async with Golem(budget=1.0, subnet_tag="public", app_key="a70facb9501d4528a77f25574ab0f12b") as golem:
         cluster = await golem.run_service(DateService, num_instances=1)
         start_time = datetime.now()
 

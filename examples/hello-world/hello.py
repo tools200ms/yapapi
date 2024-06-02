@@ -24,7 +24,7 @@ async def main():
 
     tasks = [Task(data=None)]
 
-    async with Golem(budget=1.0, subnet_tag="public") as golem:
+    async with Golem(budget=1.0, subnet_tag="public", app_key="a70facb9501d4528a77f25574ab0f12b") as golem:
         async for completed in golem.execute_tasks(worker, tasks, payload=package):
             print(completed.result.stdout)
 
